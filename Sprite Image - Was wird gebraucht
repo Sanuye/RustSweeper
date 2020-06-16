@@ -1,0 +1,20 @@
+//SpriteImage
+
+use std::path::Path;
+
+//Bei Path den Weg zur gewünschten Datei auswählen
+
+impl Path {
+	let path = Path::new("./foo/bar.txt");
+}
+
+//gewünschte Bilddatei einfügen
+
+impl Image {
+	pub fn new<P: AsRef<Path>>(context: &mut Context, path: P) -> GameResult<Image>;
+
+//Neues SpriteBatch, welches mit gewünschtem Bild gemalt wird.
+
+impl SpriteBatch {
+	pub fn new(image: Image) -> Self
+}
