@@ -65,7 +65,7 @@ impl Field {
 	
 	fn place_mine(&mut self) {									//hier werden random 1-3 Miene auf unsere Felder platziert
 		let mut rng = rand::thread_rng();
-		let m = rng.gen_range(0, 3);
+		let m = rng.gen_range(0, 5);
 		if m == 0 {
 			self.mine = true;
 		}
@@ -142,11 +142,51 @@ fn set_counts(state: &mut State) {								//Umwandlung in usize (muss wohl gemac
 	}
 }
 
+fn white_field(state: &mut State, id: usize) {
+	if (id+1) % 5 != 0 && id+1 < 40{								//rechtes Nachbarfeld
+		state.fields[id+1].clicked = true;
+	}
+	if (id-1) % 5 != 4 && id-1 >= 0 {								//linkes Nachbarfeld
+		state.fields[id-1].clicked = true;
+	}
+	if (id+5) < 40 {												//Nachbarfeld direkt darunter
+		state.fields[id+5].clicked = true;
+	}
+	if (id-5) >= 0 {												//Nachbarfeld direkt darüber
+		state.fields[id-5].clicked = true;
+	}
+	if (id+4) % 5 != 4 && id+4 < 40 {								//Nachbarfeld links unten
+		state.fields[id+4].clicked = true;
+	}
+	if (id-4) % 5 != 0 && id-4 >= 0 {								//Nachbarfeld rechts oben
+		state.fields[id-4].clicked = true;
+	}
+	if (id+6) % 5 != 0 && id+6 < 40 {								//Nachbarfeld rechts unten
+		state.fields[id+6].clicked = true;
+	}
+	if (id-6) % 5 != 4 && id-6 >= 0 {								//Nachbarfeld links oben
+		state.fields[id-6].clicked = true;
+	}
+}
 
 impl ggez::event::EventHandler for State {												//der EventHandler updated stetig unser Spielfeld und zeichnet die passenden Rechtecke
 	fn update (&mut self, ctx: &mut Context) -> GameResult<()> {						//Spielupdate
 		Ok(())
 	}
+	
+	fn mouse_button_down_event(&mut self, ctx: &mut Context, button: ggez::input::mouse::MouseButton, x: f32, y: f32) {
+		for field in &mut self.fields {
+			if (field.x + 50.0) > x && x >= field.x && (field.y + 50.0) > y && y >= field.y {
+				//GameOver einleiten
+				/*if field.mine == true {
+					reveal;
+				}*/
+				field.clicked = true;
+			}
+		}
+	}
+	
+	
 	fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {							//Rechteck zeichnen
 		for field in &self.fields {
 			if field.mine == true {														//besitzt das Feld eine Miene, so wird es schwarz
