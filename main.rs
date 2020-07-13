@@ -10,6 +10,8 @@ use rand::Rng;
 
 struct State{
 	fields: Vec<Field>,
+	game_over: bool,
+	game_won: bool,
 }
 
 // Alle Felder
@@ -74,7 +76,6 @@ impl Field {
 
 fn get_count(state: &State, i: i32) -> i32 {					//hier wird überprüft, ob sich eine Miene in der Nähe des Feldes befindet
 																//Wir müssen immer zuerst gucken, ob das Feld, das wir überprüfen auch das Feld ist, das wir meinen.
-
 	let mut c: i32 = 0;											
 	if (i+1) % 5 != 0 && i+1 < 40{								//rechtes Nachbarfeld
 		let x = i as usize;
@@ -142,151 +143,162 @@ fn set_counts(state: &mut State) {								//Umwandlung in usize (muss wohl gemac
 	}
 }
 
-fn white_field(state: &mut State, id: usize) {
-	if (id+1) % 5 != 0 && id+1 < 40{								//rechtes Nachbarfeld
-		state.fields[id+1].clicked = true;
-	}
-	if (id-1) % 5 != 4 && id-1 >= 0 {								//linkes Nachbarfeld
-		state.fields[id-1].clicked = true;
-	}
-	if (id+5) < 40 {												//Nachbarfeld direkt darunter
-		state.fields[id+5].clicked = true;
-	}
-	if (id-5) >= 0 {												//Nachbarfeld direkt darüber
-		state.fields[id-5].clicked = true;
-	}
-	if (id+4) % 5 != 4 && id+4 < 40 {								//Nachbarfeld links unten
-		state.fields[id+4].clicked = true;
-	}
-	if (id-4) % 5 != 0 && id-4 >= 0 {								//Nachbarfeld rechts oben
-		state.fields[id-4].clicked = true;
-	}
-	if (id+6) % 5 != 0 && id+6 < 40 {								//Nachbarfeld rechts unten
-		state.fields[id+6].clicked = true;
-	}
-	if (id-6) % 5 != 4 && id-6 >= 0 {								//Nachbarfeld links oben
-		state.fields[id-6].clicked = true;
+impl State {
+	fn check_field (&mut self) -> bool{
+		let mut win = false;
+		for field in &mut self.fields {
+			if field.mine && !field.clicked {
+				win = true;
+			}
+			else if !field.mine && field.clicked {
+				win = true;
+			}
+			else {
+				win = false;
+			}
+		}
+		return win;
 	}
 }
+				
 
 impl ggez::event::EventHandler for State {												//der EventHandler updated stetig unser Spielfeld und zeichnet die passenden Rechtecke
 	fn update (&mut self, ctx: &mut Context) -> GameResult<()> {						//Spielupdate
+		if !self.game_over && !self.game_won{
+			if self.check_field() {
+				self.game_won = true;
+			}
+		}
+		if self.game_won {
+			self.game_over = true;
+		}
 		Ok(())
 	}
 	
 	fn mouse_button_down_event(&mut self, ctx: &mut Context, button: ggez::input::mouse::MouseButton, x: f32, y: f32) {
 		for field in &mut self.fields {
 			if (field.x + 50.0) > x && x >= field.x && (field.y + 50.0) > y && y >= field.y {
-				//GameOver einleiten
-				/*if field.mine == true {
-					reveal;
-				}*/
 				field.clicked = true;
+				if field.mine == true {
+					self.game_over = true;
+				}
 			}
+		}
+		if self.game_over && !self.game_won {
+			println!("Miene Getroffen, Game Over.");
+		}
+		if self.game_won{
+			println!("Gewonnen!");
 		}
 	}
 	
 	
-	fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {							//Rechteck zeichnen
+	fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {								//Rechteck zeichnen
 		for field in &self.fields {
-			if field.mine == true {														//besitzt das Feld eine Miene, so wird es schwarz
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::BLACK,
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+			if !self.game_over {															//Wenn noch nicht Gameover, update Feld.
+				if field.mine == false && field.counts == 1 {								//helleres blau bei counts=1
+					let rectangle = graphics::Mesh::new_rectangle(
+						ctx,
+						graphics::DrawMode::fill(),
+						graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+						graphics::Color::new(0.0, 0.0, 1.0, 1.0),
+					)?;
+					graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+				}
+				else if field.mine == false && field.counts == 2 {							//dunkleres grün bei counts=2
+					let rectangle = graphics::Mesh::new_rectangle(
+						ctx,
+						graphics::DrawMode::fill(),
+						graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+						graphics::Color::new(0.0, 0.5, 0.0, 1.0),
+					)?;
+					graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+				}
+				else if field.mine == false && field.counts == 3 {							//helleres rot bei counts=3
+					let rectangle = graphics::Mesh::new_rectangle(
+						ctx,
+						graphics::DrawMode::fill(),
+						graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+						graphics::Color::new(1.0, 0.0, 0.0, 1.0),
+					)?;
+					graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+				}
+				else if field.mine == false && field.counts == 4 {							//dunkleres blau bei counts=4
+					let rectangle = graphics::Mesh::new_rectangle(
+						ctx,
+						graphics::DrawMode::fill(),
+						graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+						graphics::Color::new(0.0, 0.0, 0.52, 1.0),
+					)?;
+					graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+				}
+				else if field.mine == false && field.counts == 5 {							//dunkleres rot bei counts=5
+					let rectangle = graphics::Mesh::new_rectangle(
+						ctx,
+						graphics::DrawMode::fill(),
+						graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+						graphics::Color::new(0.52, 0.0, 0.0, 1.0),
+					)?;
+					graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+				}
+				else if field.mine == false && field.counts == 6 {							//türkis bei counts=6
+					let rectangle = graphics::Mesh::new_rectangle(
+						ctx,
+						graphics::DrawMode::fill(),
+						graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+						graphics::Color::new(0.0, 0.5, 0.52, 1.0),
+					)?;
+					graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+				}
+				else if field.mine == false && field.counts == 7 {							//lila bei counts=7
+					let rectangle = graphics::Mesh::new_rectangle(
+						ctx,
+						graphics::DrawMode::fill(),
+						graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+						graphics::Color::new(0.52, 0.0, 0.52, 1.0),
+					)?;
+					graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+				}
+				else if field.mine == false && field.counts == 8 {							//grau bei counts=8
+					let rectangle = graphics::Mesh::new_rectangle(
+						ctx,
+						graphics::DrawMode::fill(),
+						graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+						graphics::Color::new(0.78, 0.78, 0.8, 1.0),
+					)?;
+					graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+				}
+				else {
+					let rectangle = graphics::Mesh::new_rectangle(
+						ctx,
+						graphics::DrawMode::fill(),
+						graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+						graphics::WHITE,													//weiß, wenn keine Miene drauf ist
+					)?;
+					graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+				}
+				if field.clicked == false {													//Wenn Feld noch nicht angeklickt wurde, bleibt es weiß
+					let rectangle = graphics::Mesh::new_rectangle(
+						ctx,
+						graphics::DrawMode::fill(),
+						graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+						graphics::WHITE,
+					)?;
+					graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+				}
 			}
-			else if field.mine == false && field.counts == 1 {							//helleres blau bei counts=1
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::Color::new(0.0, 0.0, 1.0, 1.0),
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
-			}
-			else if field.mine == false && field.counts == 2 {							//dunkleres grün bei counts=2
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::Color::new(0.0, 0.5, 0.0, 1.0),
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
-			}
-			else if field.mine == false && field.counts == 3 {							//helleres rot bei counts=3
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::Color::new(1.0, 0.0, 0.0, 1.0),
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
-			}
-			else if field.mine == false && field.counts == 4 {							//dunkleres blau bei counts=4
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::Color::new(0.0, 0.0, 0.52, 1.0),
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
-			}
-			else if field.mine == false && field.counts == 5 {							//dunkleres rot bei counts=5
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::Color::new(0.52, 0.0, 0.0, 1.0),
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
-			}
-			else if field.mine == false && field.counts == 6 {							//türkis bei counts=6
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::Color::new(0.0, 0.5, 0.52, 1.0),
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
-			}
-			else if field.mine == false && field.counts == 7 {							//lila bei counts=7
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::Color::new(0.52, 0.0, 0.52, 1.0),
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
-			}
-			else if field.mine == false && field.counts == 8 {							//grau bei counts=8
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::Color::new(0.78, 0.78, 0.8, 1.0),
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
-			}
-			else {
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::WHITE,													//weiß, wenn keine Miene drauf ist
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
-			}
-			if field.clicked == false {													//Wenn Feld noch nicht angeklickt wurde, bleibt es weiß
-				let rectangle = graphics::Mesh::new_rectangle(
-					ctx,
-					graphics::DrawMode::fill(),
-					graphics::Rect::new(field.x, field.y, 50.0, 50.0),
-					graphics::WHITE,
-				)?;
-				graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+			else {																			//Wenn Gameover, zeichne alle Mienen.
+				for field in &self.fields {
+					if field.mine == true {
+						let rectangle = graphics::Mesh::new_rectangle(
+							ctx,
+							graphics::DrawMode::fill(),
+							graphics::Rect::new(field.x, field.y, 50.0, 50.0),
+							graphics::BLACK,
+						)?;
+						graphics::draw(ctx, &rectangle, graphics::DrawParam::default())?;
+					}	
+				}
 			}
 		}
 		graphics::present(ctx);
@@ -304,8 +316,10 @@ pub fn main() {
 			f.place_mine();
 			fields.push(f);
 			draw_counter = draw_counter + 1;
-		}	
-	let state = &mut State{fields: fields};
+		}
+	let gameover = false;
+	let gamewon = false;
+	let state = &mut State{fields: fields, game_over: gameover, game_won: gamewon};
 	set_counts(state);
 	let (ref mut ctx, ref mut event_loop) = ggez::ContextBuilder::new("hello_ggez", "awesome person")
 		.build()
